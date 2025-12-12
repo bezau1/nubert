@@ -165,6 +165,253 @@
         streakEl.textContent = 'Streak: ' + (state.streak || 0);
 
         if (alreadyPrayedToday) {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nubert Supremacy</title>
+  <style>
+    @font-face {
+      font-family: 'Determination';
+      src: url('Determination.ttf') format('truetype');
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #050509;
+      color: #f0f0f0;
+      font-family: 'Determination';
+      text-align: center;
+    }
+
+    #card {
+      padding: 2rem 3rem;
+      border-radius: 12px;
+      background: rgba(10, 10, 20, 0.9);
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    }
+
+    img {
+      max-width: 240px;
+      margin-bottom: 1rem;
+      image-rendering: pixelated;
+    }
+
+    button {
+      margin-top: 0.5rem;
+      padding: 0.6rem 1.8rem;
+      border-radius: 999px;
+      border: 1px solid #f0f0f0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #streak {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.7);
+      font-size: 0.8rem;
+    }
+
+    #message {
+      margin-top: 1rem;
+      min-height: 1.5em;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div id="streak">Streak: 0</div>
+
+  <div id="card">
+    <h1>Nubert Supremacy</h1>
+    <img src="nubert.png" id="nubert-image">
+
+    <div>
+      <button id="pray-btn">pray</button>
+      <button id="mercy-btn" style="display:none;">Beg For Mercy</button>
+    </div>
+
+    <div id="message"></div>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_PREFIX = 'nubert_supremacy_';
+      const KEY_LAST_PRAYER = STORAGE_PREFIX + 'last_prayer_date';
+      const KEY_STREAK = STORAGE_PREFIX + 'streak';
+      const KEY_EVER = STORAGE_PREFIX + 'has_ever_prayed';
+      const KEY_NEEDS_MERCY = STORAGE_PREFIX + 'needs_mercy';
+      const KEY_LAST_STREAK_BEFORE_FAIL = STORAGE_PREFIX + 'last_streak_before_fail';
+
+      const prayBtn = document.getElementById('pray-btn');
+      const mercyBtn = document.getElementById('mercy-btn');
+      const streakEl = document.getElementById('streak');
+      const messageEl = document.getElementById('message');
+      const nubertImg = document.getElementById('nubert-image');
+
+      function getTodayKey() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }
+
+      function daysBetween(a, b) {
+        if (!a || !b) return null;
+        const d1 = new Date(a), d2 = new Date(b);
+        return Math.floor((d2 - d1) / 86400000);
+      }
+
+      function loadState() {
+        return {
+          lastPrayerDate: localStorage.getItem(KEY_LAST_PRAYER),
+          streak: Number(localStorage.getItem(KEY_STREAK)) || 0,
+          hasEverPrayed: localStorage.getItem(KEY_EVER) === 'true',
+          needsMercy: localStorage.getItem(KEY_NEEDS_MERCY) === 'true',
+          lastStreakBeforeFail: Number(localStorage.getItem(KEY_LAST_STREAK_BEFORE_FAIL)) || 0
+        };
+      }
+
+      function saveState(st) {
+        localStorage.setItem(KEY_LAST_PRAYER, st.lastPrayerDate || '');
+        localStorage.setItem(KEY_STREAK, st.streak);
+        localStorage.setItem(KEY_EVER, st.hasEverPrayed);
+        localStorage.setItem(KEY_NEEDS_MERCY, st.needsMercy);
+        localStorage.setItem(KEY_LAST_STREAK_BEFORE_FAIL, st.lastStreakBeforeFail);
+      }
+
+      function updateImage(state) {
+        // If streak is 0, user has prayed before, and mercy is needed → show GREATER NUBERT
+        if (state.streak === 0 && state.hasEverPrayed && state.needsMercy) {
+          nubertImg.src = "greaternubert.png";
+        } else {
+          nubertImg.src = "nubert.png";
+        }
+      }
+
+      function updateUI(state) {
+        const today = getTodayKey();
+        const prayedToday = state.lastPrayerDate === today;
+
+        streakEl.textContent = "Streak: " + state.streak;
+
+        // Update image based on streak/mercy
+        updateImage(state);
+
+        if (prayedToday) {
+          prayBtn.textContent = "Said Prayers";
+          prayBtn.disabled = true;
+          messageEl.textContent = "You already prayed today.";
+        } else {
+          prayBtn.textContent = "pray";
+          prayBtn.disabled = false;
+          if (state.needsMercy) {
+            messageEl.textContent = "Your streak is broken. Beg for mercy…";
+          } else if (!state.hasEverPrayed) {
+            messageEl.textContent = "Begin your devotion.";
+          } else {
+            messageEl.textContent = "Do not disappoint Nubert today.";
+          }
+        }
+
+        // Mercy button only appears if they failed AND prayed before
+        if (state.streak === 0 && state.hasEverPrayed && state.needsMercy) {
+          mercyBtn.style.display = "inline-block";
+        } else {
+          mercyBtn.style.display = "none";
+        }
+      }
+
+      function init() {
+        let st = loadState();
+        const today = getTodayKey();
+
+        if (st.hasEverPrayed && st.lastPrayerDate) {
+          const gap = daysBetween(st.lastPrayerDate, today);
+          if (gap > 1 && st.streak > 0) {
+            st.lastStreakBeforeFail = st.streak;
+            st.streak = 0;
+            st.needsMercy = true;
+          }
+        }
+
+        saveState(st);
+        updateUI(st);
+      }
+
+      prayBtn.addEventListener("click", function () {
+        let st = loadState();
+        const today = getTodayKey();
+
+        if (st.lastPrayerDate === today) {
+          messageEl.textContent = "Nubert heard you already.";
+          return updateUI(st);
+        }
+
+        if (st.hasEverPrayed && st.lastPrayerDate) {
+          const gap = daysBetween(st.lastPrayerDate, today);
+          if (gap > 1) {
+            st.lastStreakBeforeFail = st.streak;
+            st.streak = 0;
+            st.needsMercy = true;
+            saveState(st);
+            messageEl.textContent = "You missed a day. Beg For Mercy.";
+            return updateUI(st);
+          }
+        }
+
+        let newStreak = 1;
+        const gap = daysBetween(st.lastPrayerDate, today);
+        if (gap === 1) newStreak = st.streak + 1;
+
+        st.lastPrayerDate = today;
+        st.streak = newStreak;
+        st.hasEverPrayed = true;
+        st.needsMercy = false;
+
+        saveState(st);
+        messageEl.textContent = "Said Prayers";
+        updateUI(st);
+      });
+
+      mercyBtn.addEventListener("click", function () {
+        let st = loadState();
+
+        if (!(st.streak === 0 && st.hasEverPrayed && st.needsMercy)) {
+          messageEl.textContent = "Nubert is not listening to mercy right now.";
+          return;
+        }
+
+        const accepted = Math.random() < 0.5;
+
+        if (accepted) {
+          st.streak = st.lastStreakBeforeFail || 1;
+          st.lastPrayerDate = getTodayKey();
+          st.needsMercy = false;
+
+          saveState(st);
+          messageEl.textContent = "Accepted, at least I'm the best.";
+        } else {
+          messageEl.textContent = "You asked for mercy, Nubert showed none.";
+        }
+
+        updateUI(st);
+      });
+
+      init();
+    })();
+  </script>
+</body>
+</html>
           prayBtn.textContent = 'Said Prayers';
           prayBtn.disabled = true;
           if (!messageEl.textContent) {
@@ -231,51 +478,7 @@
             state.lastStreakBeforeFail = state.streak;
             state.streak = 0;
             state.needsMercy = true;
-            saveState(state);
-            messageEl.textContent = "You missed a day. Your streak is broken. Beg For Mercy.";
-            updateUI(state);
-            return;
-          }
-        }
-
-        const lastDate = state.lastPrayerDate;
-        let newStreak = 1;
-
-        if (lastDate) {
-          const gap = daysBetween(lastDate, todayKey);
-          if (gap === 0) {
-            messageEl.textContent = "Nubert heard you already.";
-            updateUI(state);
-            return;
-          } else if (gap === 1) {
-            newStreak = (state.streak || 0) + 1;
-          }
-        }
-
-        state.lastPrayerDate = todayKey;
-        state.streak = newStreak;
-        state.hasEverPrayed = true;
-        state.needsMercy = false;
-
-        saveState(state);
-        messageEl.textContent = "Said Prayers";
-        updateUI(state);
-      });
-
-      mercyBtn.addEventListener('click', function () {
-        let state = loadState();
-
-        if (!(state.streak === 0 && state.hasEverPrayed && state.needsMercy)) {
-          messageEl.textContent = "Nubert is not listening to mercy right now.";
-          return;
-        }
-
-        const accepted = Math.random() < 0.5;
-
-        if (accepted) {
-          const todayKey = getTodayKey();
-          state.streak = state.lastStreakBeforeFail || 1;
-          state.lastPrayerDate = todayKey;
+PrayerDate = todayKey;
           state.needsMercy = false;
 
           saveState(state);
